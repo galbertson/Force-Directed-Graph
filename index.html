@@ -76,11 +76,17 @@
     button.remove:hover {
       background-color: #c0392b;
     }
-    button.export {
+    button.export, button.save {
       background-color: #6ab04c;
     }
-    button.export:hover {
+    button.export:hover, button.save:hover {
       background-color: #4a9e2d;
+    }
+    button.load {
+      background-color: #f0932b;
+    }
+    button.load:hover {
+      background-color: #d68529;
     }
     .import-label {
       background-color: #8e44ad;
@@ -102,8 +108,11 @@
     }
     .bottom-controls {
       display: flex;
-      justify-content: space-between;
+      gap: 10px;
       margin-top: 15px;
+    }
+    .bottom-controls button, .bottom-controls .import-label {
+      flex: 1;
     }
     .modal {
       position: fixed;
@@ -124,6 +133,18 @@
       box-shadow: 0 4px 15px rgba(0,0,0,0.2);
       width: 400px;
       max-width: 90%;
+      position: relative;
+    }
+    .modal-close {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 24px;
+      cursor: pointer;
+      width: auto;
+      background: none;
+      border: none;
+      color: #555;
     }
     .modal-buttons {
       display: flex;
@@ -141,6 +162,19 @@
     button.cancel:hover {
       background-color: #7f8c8d;
     }
+    .messages {
+      background-color: #fff;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 4px;
+      border-left: 4px solid #3498db;
+    }
+    .error {
+      border-left-color: #e74c3c;
+    }
+    .success {
+      border-left-color: #2ecc71;
+    }
     @media (max-width: 768px) {
       .controls {
         grid-template-columns: 1fr;
@@ -154,6 +188,8 @@
       <h2>Force-Directed Graph Editor</h2>
       
       <svg id="graph"></svg>
+      
+      <div id="messages" class="messages hidden"></div>
       
       <div class="controls">
         <div class="control-panel">
@@ -173,19 +209,20 @@
       </div>
       
       <div class="bottom-controls">
-        <div>
-          <button id="exportBtn" class="export">Export Data</button>
-          <label class="import-label">
-            Import Data
-            <input type="file" id="importInput" accept=".json" class="hidden">
-          </label>
-        </div>
+        <button id="saveBtn" class="save">Save to Local Storage</button>
+        <button id="loadBtn" class="load">Load from Local Storage</button>
+        <button id="exportBtn" class="export">Export JSON</button>
+        <label class="import-label">
+          Import JSON
+          <input type="file" id="importInput" accept=".json" class="hidden">
+        </label>
       </div>
     </div>
   </div>
   
   <div id="editModal" class="modal hidden">
-    <div class="modal-content" onclick="event.stopPropagation()">
+    <div class="modal-content">
+      <button class="modal-close" id="closeModalBtn">&times;</button>
       <h3 id="editModalTitle">Edit Node</h3>
       <input type="text" id="nodeLabelEdit" placeholder="Node Label">
       <div class="modal-buttons">
@@ -233,34 +270,67 @@
       const removeNodeBtn = document.getElementById('removeNodeBtn');
       const exportBtn = document.getElementById('exportBtn');
       const importInput = document.getElementById('importInput');
+      const saveBtn = document.getElementById('saveBtn');
+      const loadBtn = document.getElementById('loadBtn');
       const editModal = document.getElementById('editModal');
       const editModalTitle = document.getElementById('editModalTitle');
       const nodeLabelEdit = document.getElementById('nodeLabelEdit');
       const cancelEditBtn = document.getElementById('cancelEditBtn');
       const updateNodeBtn = document.getElementById('updateNodeBtn');
+      const closeModalBtn = document.getElementById('closeModalBtn');
+      const messagesEl = document.getElementById('messages');
       
       // Initialize the graph
       initGraph();
+      
+      // Try to load data from localStorage on page load
+      tryLoadFromLocalStorage();
       
       // Event listeners
       addNodeBtn.addEventListener('click', addNode);
       removeNodeBtn.addEventListener('click', removeNode);
       exportBtn.addEventListener('click', exportData);
       importInput.addEventListener('change', importData);
-      editModal.addEventListener('click', () => {
-        editModal.classList.add('hidden');
-        selectedNode = null;
+      saveBtn.addEventListener('click', saveToLocalStorage);
+      loadBtn.addEventListener('click', loadFromLocalStorage);
+      
+      // Modal event listeners
+      closeModalBtn.addEventListener('click', closeEditModal);
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !editModal.classList.contains('hidden')) {
+          closeEditModal();
+        }
       });
-      cancelEditBtn.addEventListener('click', () => {
-        editModal.classList.add('hidden');
-        selectedNode = null;
+      
+      editModal.addEventListener('click', (event) => {
+        if (event.target === editModal) {
+          closeEditModal();
+        }
       });
+      
+      cancelEditBtn.addEventListener('click', closeEditModal);
       updateNodeBtn.addEventListener('click', updateNodeLabel);
+      
+      function closeEditModal() {
+        editModal.classList.add('hidden');
+        selectedNode = null;
+      }
 
       // Initialize the graph
       function initGraph() {
         updateSelectOptions();
         renderGraph();
+      }
+      
+      // Show a message to the user
+      function showMessage(message, type = '') {
+        messagesEl.textContent = message;
+        messagesEl.className = `messages ${type}`;
+        messagesEl.classList.remove('hidden');
+        
+        setTimeout(() => {
+          messagesEl.classList.add('hidden');
+        }, 3000);
       }
       
       // Update the select options for parent and remove dropdowns
@@ -315,12 +385,12 @@
           .enter()
           .append("g")
           .call(drag(simulation))
-          .on("click", (event, d) => {
+          .on("click", function(event, d) {
+            event.stopPropagation();
             selectedNode = d;
             editModalTitle.textContent = `Edit Node: ${d.label}`;
             nodeLabelEdit.value = d.label;
             editModal.classList.remove('hidden');
-            event.stopPropagation();
           });
         
         // Add circles to the node groups
@@ -374,12 +444,6 @@
             .on("drag", dragged)
             .on("end", dragended);
         }
-        
-        // Close edit modal when clicking on the SVG background
-        svg.on("click", () => {
-          editModal.classList.add('hidden');
-          selectedNode = null;
-        });
       }
       
       // Add a new node
@@ -387,16 +451,22 @@
         const newNodeName = newNodeNameInput.value.trim();
         const selectedParent = parentSelect.value;
         
-        if (!newNodeName) return;
+        if (!newNodeName) {
+          showMessage('Please enter a node name', 'error');
+          return;
+        }
         
         const existingNode = nodes.find(node => node.id === newNodeName);
         if (existingNode) {
-          alert("A node with this ID already exists.");
+          showMessage('A node with this ID already exists', 'error');
           return;
         }
         
         const parentNode = nodes.find(node => node.id === selectedParent);
-        if (!parentNode) return;
+        if (!parentNode) {
+          showMessage('Please select a parent node', 'error');
+          return;
+        }
         
         const newNode = {
           id: newNodeName,
@@ -415,6 +485,7 @@
         links.push(newLink);
         newNodeNameInput.value = '';
         
+        showMessage(`Added new node: ${newNodeName}`, 'success');
         updateSelectOptions();
         renderGraph();
       }
@@ -423,38 +494,130 @@
       function removeNode() {
         const nodeToRemove = removeNodeSelect.value;
         
-        if (!nodeToRemove) return;
-        
-        if (nodeToRemove === "Root") {
-          alert("Cannot remove the root node.");
+        if (!nodeToRemove) {
+          showMessage('Please select a node to remove', 'error');
           return;
         }
         
-        nodes = nodes.filter(node => node.id !== nodeToRemove);
-        links = links.filter(link => 
-          link.source.id !== nodeToRemove && link.target.id !== nodeToRemove
-        );
+        if (nodeToRemove === "Root") {
+          showMessage('Cannot remove the root node', 'error');
+          return;
+        }
         
+        // Find all descendants of the node to remove
+        const nodesToRemove = new Set();
+        nodesToRemove.add(nodeToRemove);
+        
+        let found = true;
+        while (found) {
+          found = false;
+          for (const link of links) {
+            const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+            const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+            
+            if (nodesToRemove.has(sourceId) && !nodesToRemove.has(targetId)) {
+              nodesToRemove.add(targetId);
+              found = true;
+            }
+          }
+        }
+        
+        // Remove all affected nodes and links
+        const originalLength = nodes.length;
+        nodes = nodes.filter(node => !nodesToRemove.has(node.id));
+        links = links.filter(link => {
+          const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+          const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+          return !nodesToRemove.has(sourceId) && !nodesToRemove.has(targetId);
+        });
+        
+        const removedCount = originalLength - nodes.length;
+        showMessage(`Removed ${removedCount} node(s)`, 'success');
         updateSelectOptions();
         renderGraph();
       }
       
       // Update node label
       function updateNodeLabel() {
-        if (!selectedNode || !nodeLabelEdit.value.trim()) return;
+        if (!selectedNode) return;
+        
+        const newLabel = nodeLabelEdit.value.trim();
+        if (!newLabel) {
+          showMessage('Please enter a node label', 'error');
+          return;
+        }
         
         nodes = nodes.map(node => {
           if (node.id === selectedNode.id) {
-            return { ...node, label: nodeLabelEdit.value };
+            return { ...node, label: newLabel };
           }
           return node;
         });
         
-        editModal.classList.add('hidden');
-        selectedNode = null;
-        
+        showMessage(`Updated node: ${selectedNode.id}`, 'success');
+        closeEditModal();
         updateSelectOptions();
         renderGraph();
+      }
+      
+      // Save data to localStorage
+      function saveToLocalStorage() {
+        try {
+          const data = {
+            nodes: nodes,
+            links: links
+          };
+          
+          localStorage.setItem('graphEditorData', JSON.stringify(data));
+          showMessage('Data saved to local storage', 'success');
+        } catch (error) {
+          showMessage('Error saving data: ' + error.message, 'error');
+        }
+      }
+      
+      // Try to load data from localStorage on page load
+      function tryLoadFromLocalStorage() {
+        try {
+          const savedData = localStorage.getItem('graphEditorData');
+          if (savedData) {
+            const data = JSON.parse(savedData);
+            loadGraphData(data);
+          }
+        } catch (error) {
+          console.error('Error loading saved data:', error);
+        }
+      }
+      
+      // Load data from localStorage with confirmation
+      function loadFromLocalStorage() {
+        try {
+          const savedData = localStorage.getItem('graphEditorData');
+          if (!savedData) {
+            showMessage('No saved data found', 'error');
+            return;
+          }
+          
+          const data = JSON.parse(savedData);
+          loadGraphData(data);
+          showMessage('Data loaded from local storage', 'success');
+        } catch (error) {
+          showMessage('Error loading data: ' + error.message, 'error');
+        }
+      }
+      
+      // Load graph data from a data object
+      function loadGraphData(data) {
+        if (data.nodes && data.links) {
+          nodes = data.nodes;
+          links = data.links.map(link => ({
+            source: link.source.id || link.source,
+            target: link.target.id || link.target,
+            value: link.value || 1
+          }));
+          
+          updateSelectOptions();
+          renderGraph();
+        }
       }
       
       // Export data as JSON
@@ -485,24 +648,31 @@
         reader.onload = (e) => {
           try {
             const data = JSON.parse(e.target.result);
-            if (data.nodes && data.links) {
-              nodes = data.nodes;
-              links = data.links.map(link => ({
-                source: link.source.id || link.source,
-                target: link.target.id || link.target,
-                value: link.value
-              }));
-              
-              updateSelectOptions();
-              renderGraph();
-            }
+            loadGraphData(data);
+            showMessage('Data imported successfully', 'success');
           } catch (error) {
-            alert("Error importing data: " + error.message);
+            showMessage('Error importing data: ' + error.message, 'error');
           }
         };
         reader.readAsText(file);
       }
     });
+    // Close modal if clicking outside of it
+document.addEventListener("click", (event) => {
+  if (
+    !editModal.classList.contains("hidden") &&
+    !editModal.contains(event.target) &&
+    event.target.id !== "updateNodeBtn"
+  ) {
+    editModal.classList.add("hidden");
+    selectedNode = null;
+  }
+});
+
+// Prevent clicks inside the modal from closing it
+editModal.addEventListener("click", (event) => {
+  event.stopPropagation();
+});
   </script>
 </body>
 </html>
