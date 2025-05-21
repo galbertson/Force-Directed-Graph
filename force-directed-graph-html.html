@@ -6,503 +6,204 @@
   <title>Force-Directed Graph Editor</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
   <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      margin: 0;
-      padding: 20px;
-      background-color: #f5f5f5;
-    }
-    .container {
-      max-width: 1000px;
-      margin: 0 auto;
-    }
-    .graph-container {
-      background-color: #f0f0f0;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      margin-bottom: 20px;
-    }
-    h2 {
-      text-align: center;
-      margin-bottom: 20px;
-    }
-    h3 {
-      margin-top: 0;
-    }
-    svg {
-      background-color: #1a1a2e;
-      border-radius: 8px;
-      display: block;
-      margin: 0 auto;
-      width: 100%;
-      height: 500px;
-    }
-    .controls {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-top: 20px;
-    }
-    .control-panel {
-      background-color: white;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    input, select, button {
-      display: block;
-      width: 100%;
-      padding: 8px;
-      margin-bottom: 10px;
-      border: 1px solid #ddd;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    button {
-      background-color: #4a69bd;
-      color: white;
-      border: none;
-      cursor: pointer;
-      font-weight: 600;
-      transition: background-color 0.2s;
-    }
-    button:hover {
-      background-color: #1e3799;
-    }
-    button.remove {
-      background-color: #eb4d4b;
-    }
-    button.remove:hover {
-      background-color: #c0392b;
-    }
-    button.export {
-      background-color: #6ab04c;
-    }
-    button.export:hover {
-      background-color: #4a9e2d;
-    }
-    .import-label {
-      background-color: #8e44ad;
-      color: white;
-      padding: 8px;
-      border-radius: 4px;
-      cursor: pointer;
-      text-align: center;
-      font-weight: 600;
-      display: inline-block;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    .import-label:hover {
-      background-color: #6c3483;
-    }
-    .hidden {
-      display: none;
-    }
-    .bottom-controls {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 15px;
-    }
-    .modal {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 10;
-    }
-    .modal-content {
-      background-color: white;
-      padding: 20px;
-      border-radius: 8px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-      width: 400px;
-      max-width: 90%;
-    }
-    .modal-buttons {
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      margin-top: 15px;
-    }
-    .modal-buttons button {
-      width: auto;
-      padding: 8px 15px;
-    }
-    button.cancel {
-      background-color: #95a5a6;
-    }
-    button.cancel:hover {
-      background-color: #7f8c8d;
-    }
-    @media (max-width: 768px) {
-      .controls {
-        grid-template-columns: 1fr;
-      }
-    }
+    body { font-family: sans-serif; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 1000px; margin: auto; }
+    svg { background: #1a1a2e; border-radius: 8px; width: 100%; height: 500px; display: block; cursor: grab; }
+    .modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; }
+    .modal-content { background: #fff; padding: 20px; border-radius: 8px; width: 400px; max-width: 90%; }
+    .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 10px; }
+    input, select, button { width: 100%; padding: 8px; margin: 5px 0; }
+    button { background: #4a69bd; color: white; border: none; cursor: pointer; border-radius: 4px; }
+    button:hover { background: #1e3799; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="graph-container">
-      <h2>Force-Directed Graph Editor</h2>
-      
-      <svg id="graph"></svg>
-      
-      <div class="controls">
-        <div class="control-panel">
-          <h3>Add Node</h3>
-          <input type="text" id="newNodeName" placeholder="New Node Name">
-          <select id="parentSelect"></select>
-          <button id="addNodeBtn">Add Node</button>
-        </div>
-        
-        <div class="control-panel">
-          <h3>Remove Node</h3>
-          <select id="removeNodeSelect">
-            <option value="">Select Node to Remove</option>
-          </select>
-          <button id="removeNodeBtn" class="remove">Remove Node</button>
-        </div>
-      </div>
-      
-      <div class="bottom-controls">
-        <div>
-          <button id="exportBtn" class="export">Export Data</button>
-          <label class="import-label">
-            Import Data
-            <input type="file" id="importInput" accept=".json" class="hidden">
-          </label>
-        </div>
-      </div>
+<div class="container">
+  <h2>Force-Directed Graph Editor</h2>
+  <svg id="graph"></svg>
+
+  <input type="text" id="newNodeName" placeholder="Node Name">
+  <select id="parentSelect"></select>
+  <button id="addNodeBtn">Add Node</button>
+
+  <select id="removeNodeSelect"></select>
+  <button id="removeNodeBtn">Remove Node</button>
+
+  <button id="exportBtn">Export</button>
+  <button id="clearDataBtn">Clear Saved Graph</button>
+</div>
+
+<div id="editModal" class="modal">
+  <div class="modal-content">
+    <h3 id="editModalTitle">Edit Node</h3>
+    <input type="text" id="nodeLabelEdit">
+    <div class="modal-buttons">
+      <button id="cancelEditBtn">Cancel</button>
+      <button id="updateNodeBtn">Update</button>
     </div>
   </div>
-  
-  <div id="editModal" class="modal hidden">
-    <div class="modal-content" onclick="event.stopPropagation()">
-      <h3 id="editModalTitle">Edit Node</h3>
-      <input type="text" id="nodeLabelEdit" placeholder="Node Label">
-      <div class="modal-buttons">
-        <button id="cancelEditBtn" class="cancel">Cancel</button>
-        <button id="updateNodeBtn">Update</button>
-      </div>
-    </div>
-  </div>
+</div>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', () => {
-      // Initial data
-      let nodes = [
-        { id: "Root", group: 0, label: "Root", val: 20 },
-        { id: "Child1", group: 1, label: "Child 1", val: 15 },
-        { id: "Child2", group: 1, label: "Child 2", val: 15 },
-        { id: "Child3", group: 1, label: "Child 3", val: 15 },
-        { id: "Grandchild1", group: 2, label: "Grandchild 1", val: 10 },
-        { id: "Grandchild2", group: 2, label: "Grandchild 2", val: 10 },
-        { id: "Grandchild3", group: 2, label: "Grandchild 3", val: 10 },
-        { id: "Grandchild4", group: 2, label: "Grandchild 4", val: 10 },
-        { id: "Grandchild5", group: 2, label: "Grandchild 5", val: 10 },
-      ];
-      
-      let links = [
-        { source: "Root", target: "Child1", value: 2 },
-        { source: "Root", target: "Child2", value: 2 },
-        { source: "Root", target: "Child3", value: 2 },
-        { source: "Child1", target: "Grandchild1", value: 1 },
-        { source: "Child1", target: "Grandchild2", value: 1 },
-        { source: "Child2", target: "Grandchild3", value: 1 },
-        { source: "Child2", target: "Grandchild4", value: 1 },
-        { source: "Child3", target: "Grandchild5", value: 1 },
-      ];
+<script>
+let nodes = [], links = [], selectedNode = null;
+const svg = d3.select("#graph");
+const parentSelect = document.getElementById('parentSelect');
+const removeNodeSelect = document.getElementById('removeNodeSelect');
+const editModal = document.getElementById('editModal');
+const nodeLabelEdit = document.getElementById('nodeLabelEdit');
 
-      let selectedNode = null;
-      const colors = d3.scaleOrdinal(d3.schemeCategory10);
-      
-      // DOM elements
-      const svg = d3.select("#graph");
-      const newNodeNameInput = document.getElementById('newNodeName');
-      const parentSelect = document.getElementById('parentSelect');
-      const removeNodeSelect = document.getElementById('removeNodeSelect');
-      const addNodeBtn = document.getElementById('addNodeBtn');
-      const removeNodeBtn = document.getElementById('removeNodeBtn');
-      const exportBtn = document.getElementById('exportBtn');
-      const importInput = document.getElementById('importInput');
-      const editModal = document.getElementById('editModal');
-      const editModalTitle = document.getElementById('editModalTitle');
-      const nodeLabelEdit = document.getElementById('nodeLabelEdit');
-      const cancelEditBtn = document.getElementById('cancelEditBtn');
-      const updateNodeBtn = document.getElementById('updateNodeBtn');
-      
-      // Initialize the graph
-      initGraph();
-      
-      // Event listeners
-      addNodeBtn.addEventListener('click', addNode);
-      removeNodeBtn.addEventListener('click', removeNode);
-      exportBtn.addEventListener('click', exportData);
-      importInput.addEventListener('change', importData);
-      editModal.addEventListener('click', () => {
-        editModal.classList.add('hidden');
-        selectedNode = null;
-      });
-      cancelEditBtn.addEventListener('click', () => {
-        editModal.classList.add('hidden');
-        selectedNode = null;
-      });
-      updateNodeBtn.addEventListener('click', updateNodeLabel);
+function saveGraph() {
+  localStorage.setItem("graphData", JSON.stringify({ nodes, links }));
+}
+function loadGraph() {
+  const data = JSON.parse(localStorage.getItem("graphData"));
+  if (data) { nodes = data.nodes; links = data.links; }
+  else {
+    nodes = [{ id: "Root", label: "Root", group: 0, val: 20 }];
+    links = [];
+  }
+}
 
-      // Initialize the graph
-      function initGraph() {
-        updateSelectOptions();
-        renderGraph();
-      }
-      
-      // Update the select options for parent and remove dropdowns
-      function updateSelectOptions() {
-        // Clear existing options
-        parentSelect.innerHTML = '';
-        removeNodeSelect.innerHTML = '<option value="">Select Node to Remove</option>';
-        
-        // Add new options based on current nodes
-        nodes.forEach(node => {
-          const parentOption = document.createElement('option');
-          parentOption.value = node.id;
-          parentOption.textContent = node.label;
-          parentSelect.appendChild(parentOption);
-          
-          const removeOption = document.createElement('option');
-          removeOption.value = node.id;
-          removeOption.textContent = node.label;
-          removeNodeSelect.appendChild(removeOption);
-        });
-      }
-      
-      // Render the force-directed graph
-      function renderGraph() {
-        // Clear SVG
-        svg.selectAll('*').remove();
-        
-        // Calculate dimensions
-        const width = parseInt(svg.style('width'));
-        const height = parseInt(svg.style('height'));
-        
-        // Set up the simulation
-        const simulation = d3.forceSimulation(nodes)
-          .force("link", d3.forceLink(links).id(d => d.id).distance(100))
-          .force("charge", d3.forceManyBody().strength(-300))
-          .force("center", d3.forceCenter(width / 2, height / 2))
-          .force("collide", d3.forceCollide().radius(d => d.val + 10));
-        
-        // Draw the links
-        const link = svg.append("g")
-          .selectAll("line")
-          .data(links)
-          .enter()
-          .append("line")
-          .attr("stroke", "#999")
-          .attr("stroke-width", d => Math.sqrt(d.value));
-        
-        // Draw the nodes
-        const node = svg.append("g")
-          .selectAll("g")
-          .data(nodes)
-          .enter()
-          .append("g")
-          .call(drag(simulation))
-          .on("click", (event, d) => {
-            selectedNode = d;
-            editModalTitle.textContent = `Edit Node: ${d.label}`;
-            nodeLabelEdit.value = d.label;
-            editModal.classList.remove('hidden');
-            event.stopPropagation();
-          });
-        
-        // Add circles to the node groups
-        node.append("circle")
-          .attr("r", d => d.val)
-          .attr("fill", d => colors(d.group))
-          .attr("stroke", "#fff")
-          .attr("stroke-width", 1.5);
-        
-        // Add labels to the node groups
-        node.append("text")
-          .attr("text-anchor", "middle")
-          .attr("dy", ".35em")
-          .text(d => d.label)
-          .attr("fill", "#fff")
-          .style("font-size", "12px")
-          .style("pointer-events", "none");
-        
-        // Set up the simulation tick function
-        simulation.on("tick", () => {
-          link
-            .attr("x1", d => d.source.x)
-            .attr("y1", d => d.source.y)
-            .attr("x2", d => d.target.x)
-            .attr("y2", d => d.target.y);
-          
-          node.attr("transform", d => `translate(${d.x},${d.y})`);
-        });
-        
-        // Helper function for dragging
-        function drag(simulation) {
-          function dragstarted(event) {
-            if (!event.active) simulation.alphaTarget(0.3).restart();
-            event.subject.fx = event.subject.x;
-            event.subject.fy = event.subject.y;
-          }
-          
-          function dragged(event) {
-            event.subject.fx = event.x;
-            event.subject.fy = event.y;
-          }
-          
-          function dragended(event) {
-            if (!event.active) simulation.alphaTarget(0);
-            event.subject.fx = null;
-            event.subject.fy = null;
-          }
-          
-          return d3.drag()
-            .on("start", dragstarted)
-            .on("drag", dragged)
-            .on("end", dragended);
-        }
-        
-        // Close edit modal when clicking on the SVG background
-        svg.on("click", () => {
-          editModal.classList.add('hidden');
-          selectedNode = null;
-        });
-      }
-      
-      // Add a new node
-      function addNode() {
-        const newNodeName = newNodeNameInput.value.trim();
-        const selectedParent = parentSelect.value;
-        
-        if (!newNodeName) return;
-        
-        const existingNode = nodes.find(node => node.id === newNodeName);
-        if (existingNode) {
-          alert("A node with this ID already exists.");
-          return;
-        }
-        
-        const parentNode = nodes.find(node => node.id === selectedParent);
-        if (!parentNode) return;
-        
-        const newNode = {
-          id: newNodeName,
-          label: newNodeName,
-          group: parentNode.group + 1,
-          val: Math.max(parentNode.val - 5, 5)
-        };
-        
-        const newLink = {
-          source: selectedParent,
-          target: newNodeName,
-          value: 1
-        };
-        
-        nodes.push(newNode);
-        links.push(newLink);
-        newNodeNameInput.value = '';
-        
-        updateSelectOptions();
-        renderGraph();
-      }
-      
-      // Remove a node
-      function removeNode() {
-        const nodeToRemove = removeNodeSelect.value;
-        
-        if (!nodeToRemove) return;
-        
-        if (nodeToRemove === "Root") {
-          alert("Cannot remove the root node.");
-          return;
-        }
-        
-        nodes = nodes.filter(node => node.id !== nodeToRemove);
-        links = links.filter(link => 
-          link.source.id !== nodeToRemove && link.target.id !== nodeToRemove
-        );
-        
-        updateSelectOptions();
-        renderGraph();
-      }
-      
-      // Update node label
-      function updateNodeLabel() {
-        if (!selectedNode || !nodeLabelEdit.value.trim()) return;
-        
-        nodes = nodes.map(node => {
-          if (node.id === selectedNode.id) {
-            return { ...node, label: nodeLabelEdit.value };
-          }
-          return node;
-        });
-        
-        editModal.classList.add('hidden');
-        selectedNode = null;
-        
-        updateSelectOptions();
-        renderGraph();
-      }
-      
-      // Export data as JSON
-      function exportData() {
-        const data = {
-          nodes: nodes,
-          links: links
-        };
-        
-        const jsonString = JSON.stringify(data, null, 2);
-        const blob = new Blob([jsonString], { type: "application/json" });
-        const href = URL.createObjectURL(blob);
-        
-        const link = document.createElement("a");
-        link.href = href;
-        link.download = "force-directed-graph-data.json";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-      }
-      
-      // Import data from JSON file
-      function importData(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          try {
-            const data = JSON.parse(e.target.result);
-            if (data.nodes && data.links) {
-              nodes = data.nodes;
-              links = data.links.map(link => ({
-                source: link.source.id || link.source,
-                target: link.target.id || link.target,
-                value: link.value
-              }));
-              
-              updateSelectOptions();
-              renderGraph();
-            }
-          } catch (error) {
-            alert("Error importing data: " + error.message);
-          }
-        };
-        reader.readAsText(file);
-      }
+function updateSelectOptions() {
+  parentSelect.innerHTML = '';
+  removeNodeSelect.innerHTML = '';
+  nodes.forEach(n => {
+    const opt = new Option(n.label, n.id);
+    parentSelect.appendChild(opt);
+    removeNodeSelect.appendChild(new Option(n.label, n.id));
+  });
+}
+
+function renderGraph() {
+  svg.selectAll("*").remove();
+  const width = parseInt(svg.style("width")), height = parseInt(svg.style("height"));
+
+  const zoomLayer = svg.append("g");
+  svg.call(d3.zoom()
+    .scaleExtent([0.1, 5])
+    .on("zoom", (event) => {
+      zoomLayer.attr("transform", event.transform);
+    })
+  );
+
+  const sim = d3.forceSimulation(nodes)
+    .force("link", d3.forceLink(links).id(d => d.id).distance(100))
+    .force("charge", d3.forceManyBody().strength(-300))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("collide", d3.forceCollide().radius(d => d.val + 10));
+
+  const link = zoomLayer.append("g")
+    .attr("stroke", "#999")
+    .attr("stroke-opacity", 0.6)
+    .selectAll("line")
+    .data(links)
+    .join("line")
+    .attr("stroke-width", d => Math.sqrt(d.value));
+
+  const node = zoomLayer.append("g")
+    .attr("stroke", "#fff")
+    .attr("stroke-width", 1.5)
+    .selectAll("g")
+    .data(nodes)
+    .join("g")
+    .call(drag(sim))
+    .on("click", (event, d) => {
+      selectedNode = d;
+      nodeLabelEdit.value = d.label;
+      document.getElementById('editModalTitle').textContent = `Edit Node: ${d.label}`;
+      editModal.style.display = 'flex';
+      event.stopPropagation();
     });
-  </script>
+
+  node.append("circle")
+    .attr("r", d => d.val)
+    .attr("fill", d => d3.schemeCategory10[d.group % 10]);
+
+  node.append("text")
+    .attr("dy", 4)
+    .attr("text-anchor", "middle")
+    .attr("fill", "#fff")
+    .text(d => d.label);
+
+  sim.on("tick", () => {
+    link
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+
+    node.attr("transform", d => `translate(${d.x},${d.y})`);
+  });
+
+  svg.on("click", () => {
+    editModal.style.display = 'none';
+    selectedNode = null;
+  });
+}
+
+function drag(sim) {
+  return d3.drag()
+    .on("start", e => { if (!e.active) sim.alphaTarget(0.3).restart(); e.subject.fx = e.subject.x; e.subject.fy = e.subject.y; })
+    .on("drag", e => { e.subject.fx = e.x; e.subject.fy = e.y; })
+    .on("end", e => { if (!e.active) sim.alphaTarget(0); e.subject.fx = null; e.subject.fy = null; });
+}
+
+function addNode() {
+  const name = document.getElementById('newNodeName').value.trim();
+  const parentId = parentSelect.value;
+  if (!name || nodes.find(n => n.id === name)) return alert("Invalid or duplicate node name");
+  const parent = nodes.find(n => n.id === parentId);
+  const newNode = {
+    id: name,
+    label: name,
+    group: parent.group + 1,
+    val: Math.max(5, parent.val - 5)
+  };
+  nodes.push(newNode);
+  links.push({ source: parent.id, target: newNode.id, value: 1 });
+  saveGraph(); updateSelectOptions(); renderGraph();
+}
+
+function removeNode() {
+  const id = removeNodeSelect.value;
+  if (id === "Root") return alert("Cannot remove root");
+  nodes = nodes.filter(n => n.id !== id);
+  links = links.filter(l => l.source !== id && l.target !== id);
+  saveGraph(); updateSelectOptions(); renderGraph();
+}
+
+function updateNodeLabel() {
+  if (!selectedNode || !nodeLabelEdit.value.trim()) return;
+  selectedNode.label = nodeLabelEdit.value.trim();
+  saveGraph(); updateSelectOptions(); renderGraph();
+  editModal.style.display = 'none'; selectedNode = null;
+}
+
+document.getElementById('addNodeBtn').onclick = addNode;
+document.getElementById('removeNodeBtn').onclick = removeNode;
+document.getElementById('exportBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify({ nodes, links }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "graph-data.json";
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+};
+document.getElementById('clearDataBtn').onclick = () => {
+  localStorage.removeItem("graphData"); location.reload();
+};
+document.getElementById('cancelEditBtn').onclick = () => {
+  editModal.style.display = 'none'; selectedNode = null;
+};
+document.getElementById('updateNodeBtn').onclick = updateNodeLabel;
+document.addEventListener("click", (e) => {
+  if (editModal.style.display === 'flex' && !editModal.contains(e.target)) {
+    editModal.style.display = 'none'; selectedNode = null;
+  }
+});
+
+loadGraph();
+updateSelectOptions();
+renderGraph();
+</script>
 </body>
 </html>
